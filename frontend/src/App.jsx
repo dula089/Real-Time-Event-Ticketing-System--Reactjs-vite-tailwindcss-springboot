@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import ConfigurationForm from "./components/ConfigurationForm";
 import TicketDisplay from "./components/TicketDisplay";
 import ControlPanel from "./components/ControlPanel";
 import LogDisplay from "./components/LogDisplay";
 import Loader from "./components/Loader";
 import NavBar from "./components/NavBar";
+import HomePage from "./components/HomePage";
+import Dashboard from "./components/Dashboard";
+import Footer from "./components/Footer";
 import axios from "axios";
 
 function App() {
@@ -41,16 +49,36 @@ function App() {
     const newErrors = {};
     if (!formData.totalTickets) {
       newErrors.totalTickets = "* Total Tickets is required";
+    } else if (parseInt(formData.totalTickets) <= 0) {
+      newErrors.totalTickets = "* Total Tickets must be greater than 0";
     }
+
     if (!formData.ticketReleaseRate) {
       newErrors.ticketReleaseRate = "* Ticket Release Rate is required";
+    } else if (parseInt(formData.ticketReleaseRate) <= 0) {
+      newErrors.ticketReleaseRate =
+        "* Ticket Release Rate must be greater than 0";
     }
+
     if (!formData.customerRetrievalRate) {
       newErrors.customerRetrievalRate = "* Customer Retrieval Rate is required";
+    } else if (parseInt(formData.customerRetrievalRate) <= 0) {
+      newErrors.customerRetrievalRate =
+        "* Customer Retrieval Rate must be greater than 0";
     }
+
     if (!formData.maxTicketCapacity) {
       newErrors.maxTicketCapacity = "* Max Ticket Capacity is required";
+    } else if (parseInt(formData.maxTicketCapacity) <= 0) {
+      newErrors.maxTicketCapacity =
+        "* Max Ticket Capacity must be greater than 0";
+    } else if (
+      parseInt(formData.maxTicketCapacity) < parseInt(formData.totalTickets)
+    ) {
+      newErrors.maxTicketCapacity =
+        "* Max Ticket Capacity cannot be less than Total Tickets";
     }
+
     return newErrors;
   };
 
@@ -77,9 +105,9 @@ function App() {
         setSubmissions([response.data]);
 
         const log = {
-          saleId: Math.floor(Math.random() * 1000).toString(),
+          saleId: null,
           dateTime: new Date().toLocaleString(),
-          message: "Configuration submitted successfully!",
+          message: "Configuration updated successfully!",
         };
 
         await saveLog(log);
@@ -98,9 +126,9 @@ function App() {
     } catch (error) {
       console.error("Error submitting form:", error);
       const errorLog = {
-        saleId: Math.floor(Math.random() * 1000).toString(),
+        saleId: null,
         dateTime: new Date().toLocaleString(),
-        message: "Error submitting configuration",
+        message: "Error: Failed to submit configuration",
       };
 
       await saveLog(errorLog);
@@ -119,10 +147,16 @@ function App() {
   };
 
   const handleStart = async () => {
+    if (tickets.length === 0) {
+      setStatusMessage("Please configure the system first.");
+      setTimeout(() => setStatusMessage(""), 3000);
+      return;
+    }
+
     setRunning(true);
     setStatusMessage("System started.");
     const log = {
-      saleId: Math.floor(Math.random() * 1000).toString(),
+      saleId: null,
       dateTime: new Date().toLocaleString(),
       message: "System started.",
     };
@@ -131,10 +165,16 @@ function App() {
   };
 
   const handleStop = async () => {
+    if (!running) {
+      setStatusMessage("System is not running.");
+      setTimeout(() => setStatusMessage(""), 3000);
+      return;
+    }
+
     setRunning(false);
     setStatusMessage("System stopped.");
     const log = {
-      saleId: Math.floor(Math.random() * 1000).toString(),
+      saleId: null,
       dateTime: new Date().toLocaleString(),
       message: "System stopped.",
     };
@@ -152,7 +192,13 @@ function App() {
       maxTicketCapacity: "",
     });
     setTickets([]);
-    setLogs([]);
+    setSubmissions([]);
+    const log = {
+      saleId: null,
+      dateTime: new Date().toLocaleString(),
+      message: "System reset.",
+    };
+    await saveLog(log);
     setErrors({
       totalTickets: "",
       ticketReleaseRate: "",
@@ -160,118 +206,119 @@ function App() {
       maxTicketCapacity: "",
     });
     setSubmissionSuccess(false);
-    const log = {
-      saleId: Math.floor(Math.random() * 1000).toString(),
-      dateTime: new Date().toLocaleString(),
-      message: "System reset.",
-    };
-    await saveLog(log);
     setTimeout(() => setStatusMessage(""), 3000);
   };
 
   useEffect(() => {
-    if (running) {
+    if (running && tickets.length > 0) {
       const interval = setInterval(() => {
         setTickets((prevTickets) => {
-          const updatedTickets = [...prevTickets];
-          const availableTicket = updatedTickets.find(
+          const availableTickets = prevTickets.filter(
             (t) => t.status === "Available"
           );
-          if (availableTicket) {
-            availableTicket.status = "Sold";
+          if (availableTickets.length === 0) {
+            // All tickets are sold, stop the system
+            setRunning(false);
+            setStatusMessage("All tickets have been sold.");
             const log = {
-              saleId: availableTicket.id,
+              saleId: null,
               dateTime: new Date().toLocaleString(),
-              message: `Ticket #${availableTicket.id} sold.`,
+              message: "System stopped: All tickets have been sold.",
+            };
+            saveLog(log);
+            setTimeout(() => setStatusMessage(""), 3000);
+            return prevTickets;
+          }
+
+          const updatedTickets = [...prevTickets];
+          const randomIndex = Math.floor(
+            Math.random() * availableTickets.length
+          );
+          const ticketToSell = availableTickets[randomIndex];
+
+          const ticketIndex = updatedTickets.findIndex(
+            (t) => t.id === ticketToSell.id
+          );
+          if (ticketIndex !== -1) {
+            updatedTickets[ticketIndex].status = "Sold";
+            const log = {
+              saleId: ticketToSell.id,
+              dateTime: new Date().toLocaleString(),
+              message: `Ticket #${ticketToSell.id} sold.`,
             };
             saveLog(log);
           }
+
           return updatedTickets;
         });
-      }, 1000 / formData.customerRetrievalRate);
+      }, 1000 / (formData.customerRetrievalRate || 1));
+
       return () => clearInterval(interval);
     }
   }, [running, formData.customerRetrievalRate]);
+
+  // Fetch logs on component mount
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const response = await axios.get("http://localhost:8081/api/logs");
+        if (response.data) {
+          setLogs(response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching logs:", error);
+      }
+    };
+
+    fetchLogs();
+  }, []);
 
   if (loading) {
     return <Loader />;
   }
 
   return (
-    <div className="bg-gray-200">
+    <div className="min-h-screen bg-gray-100">
       <Router>
         <NavBar />
         <Routes>
+          <Route path="/" element={<HomePage />} />
+
           <Route
             path="/config"
             element={
-              <div>
-                <div className="flex flex-col items-start space-y-2 bg-white">
-                  {submissions.map((submission, index) => (
-                    <div
-                      key={index}
-                      className="p-2 rounded shadow-md w-full text-sm"
-                    >
-                      <span>
-                        <strong className="px-16 text-xl">
-                          Total Tickets: {submission.totalTickets}{" "}
-                        </strong>
-                      </span>
-                      <span>
-                        <strong className="px-16 text-xl">
-                          Ticket Release Rate: {submission.ticketReleaseRate}{" "}
-                        </strong>
-                      </span>
-                      <span>
-                        <strong className="px-16 text-xl">
-                          Customer Retrieval Rate:{" "}
-                          {submission.customerRetrievalRate}
-                        </strong>{" "}
-                      </span>
-                      <span>
-                        <strong className="px-16 text-xl">
-                          Max Ticket Capacity: {submission.maxTicketCapacity}
-                        </strong>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <br />
-                {submissionSuccess && (
-                  <div className="flex justify-center items-center min-h-5">
-                    <div className="text-center text-green-500 font-semibold rounded py-5 px-6 text-base mb-3 w-1/3 bg-green-100">
-                      Form Submitted Successfully!
-                    </div>
-                  </div>
-                )}
+              <div className="container mx-auto px-4 py-8">
                 <ConfigurationForm
                   formData={formData}
                   handleChange={handleChange}
                   handleSubmit={handleSubmit}
                   errors={errors}
                 />
-                {statusMessage && (
-                  <div className="flex justify-center items-center min-h-5">
-                    <div className="text-center text-lg text-green-500 mt-4 py-5 px-6 bg-green-100 w-1/3 rounded font-semibold ">
-                      {statusMessage}
-                    </div>
-                  </div>
-                )}
-                <br />
-                <ControlPanel
-                  onStart={handleStart}
-                  onStop={handleStop}
-                  onReset={handleReset}
-                />
-                <br />
-                <TicketDisplay tickets={tickets} />
+
+                <div className="mt-8">
+                  <Dashboard
+                    tickets={tickets}
+                    submissions={submissions}
+                    statusMessage={statusMessage}
+                    submissionSuccess={submissionSuccess}
+                    handleStart={handleStart}
+                    handleStop={handleStop}
+                    handleReset={handleReset}
+                  />
+                </div>
               </div>
             }
           />
+
           <Route path="/logs" element={<LogDisplay logs={logs} />} />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <Footer />
       </Router>
+      
     </div>
+    
   );
 }
 
