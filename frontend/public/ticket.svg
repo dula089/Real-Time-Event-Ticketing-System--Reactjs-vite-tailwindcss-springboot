@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 530 280">
+  <!-- Main ticket body with rounded corners -->
+  <path d="M40,0 H490 
+           C512,0 530,18 530,40 
+           V240 C530,262 512,280 490,280 
+           H40 C18,280 0,262 0,240 
+           V40 C0,18 18,0 40,0 
+           Z
+           
+           M355,20 
+           A25,25 0 1,0 355,70 
+           A25,25 0 1,0 355,20
+           
+           M355,95 
+           A25,25 0 1,0 355,145 
+           A25,25 0 1,0 355,95
+           
+           M355,170 
+           A25,25 0 1,0 355,220 
+           A25,25 0 1,0 355,170
+           
+           M355,260 
+           A25,25 0 1,0 355,310 
+           A25,25 0 1,0 355,260
+           " 
+        fill="#FABD40" />
+  
+  <!-- Orange elements -->
+  <!-- Short pill shape at top left -->
+  <rect x="57" y="70" width="114" height="34" rx="17" ry="17" fill="#E09D4B" />
+  
+  <!-- Long pill shape in middle left -->
+  <rect x="57" y="175" width="245" height="34" rx="17" ry="17" fill="#E09D4B" />
+  
+  <!-- Second long pill shape below -->
+  <rect x="57" y="225" width="215" height="34" rx="17" ry="17" fill="#E09D4B" />
+  
+  <!-- Square at right -->
+  <rect x="455" y="175" width="50" height="50" rx="8" ry="8" fill="#E09D4B" />
+</svg>
